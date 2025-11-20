@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -24,13 +25,113 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Cell Reow" + row + "," + column);
     }
+    
+    bool FillCellReCurSivePure(int row, int col)
+    {
+        if (col == 9) { col = 0; row++; }
+        if (row == 9) return true;
+
+        List<int> nums = new List<int>{1,2,3,4,5,6,7,8,9};
+        Shuffle(nums);
+
+        foreach (int num in nums)
+        {
+            if (ValidateNumber(num, row, col))
+            {
+                sudukoBoard[row, col] = num;
+
+                if (FillCellReCurSivePure(row, col + 1))
+                    return true; // solved
+
+                sudukoBoard[row, col] = 0; // undo
+            }
+        }
+
+        return false; // dead end → backtrack
+    }
 
     public void StartGame()
     {
-        Debug.Log("Starting game");
+        /*Debug.Log("Starting game");
         ClearBoard();
-        StartCoroutine(GenerateSudukoBoard());
+        StartCoroutine(FillBoardCoroutine());*/
+        
+        ClearBoard();
+        if (FillCellReCurSivePure(0, 0))
+        {
+            Debug.Log("Sudoku generated successfully!");
+            PrintBoard();
+        }
+        else
+        {
+            Debug.Log("Failed to generate Sudoku.");
+        }
     }
+    
+    private IEnumerator FillBoardCoroutine()
+    {
+        yield return StartCoroutine(FillCell(0, 0));
+        PrintBoard();
+    }
+
+    
+    private IEnumerator FillCell(int row, int col)
+    {
+        // If col passed 8 → next row
+        if (col == 9)
+        {
+            col = 0;
+            row++;
+        }
+
+        // If row passed 8 → BOARD COMPLETE
+        if (row == 9)
+            yield break;
+
+        // Create a shuffled list of numbers 1–9
+        List<int> numbers = new List<int>() {1,2,3,4,5,6,7,8,9};
+        Shuffle(numbers);
+
+        foreach (int number in numbers)
+        {
+            if (ValidateNumber(number, row, col))
+            {
+                sudukoBoard[row, col] = number;
+
+                // Continue to next cell
+                yield return StartCoroutine(FillCell(row, col + 1));
+
+                // IF the board got filled completely, stop
+                if (IsBoardFull())
+                    yield break;
+
+                // ❌ DEAD END → undo this cell
+                sudukoBoard[row, col] = 0;
+            }
+        }
+
+        // If we finish the foreach loop:
+        // → No number worked here → dead end → return to caller
+    }
+    
+    private void Shuffle(List<int> list)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            int rnd = Random.Range(i, list.Count);
+            (list[i], list[rnd]) = (list[rnd], list[i]);
+        }
+    }
+    
+    private bool IsBoardFull()
+    {
+        for (int r = 0; r < 9; r++)
+        for (int c = 0; c < 9; c++)
+            if (sudukoBoard[r, c] == 0)
+                return false;
+        return true;
+    }
+
 
     private IEnumerator GenerateSudukoBoard()
     {
@@ -65,7 +166,7 @@ public class GameManager : MonoBehaviour
         {
             if (sudukoBoard[row, i] == randomNumber)
             {
-                Debug.Log("Row Wrong" + row);
+               // Debug.Log("Row Wrong" + row);
                 return false;
             }
         }
@@ -74,7 +175,7 @@ public class GameManager : MonoBehaviour
         {
             if (sudukoBoard[i,column] == randomNumber)
             {
-                Debug.Log("Column Wrong");
+               // Debug.Log("Column Wrong");
                 return false;
             }
         }
